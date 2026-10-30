@@ -8,7 +8,7 @@ import { AutoTextarea, DaysInput, OptionSelect } from './Fields';
 import { Icon, IconButton } from './Icon';
 import { RecordCheckbox, useUtil } from './RecordCard';
 
-const COLS = ['84px', undefined, '100px', '92px', '108px', '62px', '56px', '38px'];
+const COLS = ['96px', undefined, '104px', '96px', '112px', '64px', '60px', '52px'];
 const HEADS = ['Date', 'Job description', 'IR/CR Ref#', 'Category', 'Customer', 'Days', 'Util.'];
 
 export function TableView() {
@@ -25,7 +25,7 @@ export function TableView() {
     <td className="datecell" rowSpan={rowSpan}>
       <button type="button" className="linkish small" title="Open this day as cards" onClick={() => s.openDay(k)}>{fmtDMY(k)}</button>
       <span className="wdname">{WD_LONG[dowOf(k)].slice(0, 3)}</span>
-      <button type="button" className="btn small addrowbtn" aria-label={`Add entry on ${fmtDMY(k)}`} onClick={() => addEntry(k)}>Add entry</button>
+      <button type="button" className="addrowbtn" aria-label={`Add entry on ${fmtDMY(k)}`} onClick={() => addEntry(k)}><Icon name="plus" />Add</button>
     </td>
   );
 

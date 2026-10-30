@@ -3,6 +3,7 @@ import type { ExportFormat } from '../types';
 import { useStore } from '../state/store';
 import { monthLabel, plural } from '../lib/dates';
 import { Modal } from './Modal';
+import { Icon } from './Icon';
 
 type Mode = 'month' | 'entries' | 'selected';
 
@@ -10,9 +11,10 @@ interface ExportDialogProps {
   open: boolean;
   onClose: () => void;
   onExport: (fmt: ExportFormat, only: string[] | null, suffix: string) => void;
+  onPreview: (only: string[] | null, suffix: string) => void;
 }
 
-export function ExportDialog({ open, onClose, onExport }: ExportDialogProps) {
+export function ExportDialog({ open, onClose, onExport, onPreview }: ExportDialogProps) {
   const s = useStore();
   const [fmt, setFmt] = useState<ExportFormat>('xlsx');
   const [lastMode, setLastMode] = useState<Mode>('month');
@@ -41,11 +43,19 @@ export function ExportDialog({ open, onClose, onExport }: ExportDialogProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const go = () => {
+  const pick = () => {
     const o = opts.find((x) => x.id === mode) ?? opts[0];
     if (o.id !== 'selected') setLastMode(o.id);
     onClose();
+    return o;
+  };
+  const go = () => {
+    const o = pick();
     onExport(fmt, o.keys, o.suffix);
+  };
+  const preview = () => {
+    const o = pick();
+    onPreview(o.keys, o.suffix);
   };
 
   return (
@@ -69,6 +79,12 @@ export function ExportDialog({ open, onClose, onExport }: ExportDialogProps) {
       </div>
       <footer>
         <button className="btn" type="button" id="exNo" onClick={onClose}>Cancel</button>
+        {fmt === 'pdf' && (
+          <button className="btn" type="button" id="exPreview" onClick={preview}>
+            <Icon name="eye" />
+            Preview
+          </button>
+        )}
         <button className="btn primary" type="button" id="exGo" onClick={go}>Download</button>
       </footer>
     </Modal>

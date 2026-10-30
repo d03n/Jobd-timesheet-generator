@@ -1,7 +1,8 @@
 /* Job-D timesheet styles — design tokens on :root, light/dark themes. */
 :root{
-  --paper:#EEF0F2; --surface:#FFFFFF; --sunk:#F5F6F8; --ink:#1C2128; --muted:#5B6571; --line:#D3D8DE;
-  --silver:#C9CDD3; --accent:#1A3DB8; --accent-ink:#FFFFFF; --hi:#FFE83D; --hi-ink:#1C2128;
+  /* brand: primary #214D9B, secondary #000000 / #FFFFFF */
+  --paper:#F4F6F9; --surface:#FFFFFF; --sunk:#F7F8FA; --ink:#000000; --muted:#5A6270; --line:#E2E5EA;
+  --silver:#E9EDF3; --accent:#214D9B; --accent-ink:#FFFFFF; --accent-soft:#EDF2FA; --hi:#FFE83D; --hi-ink:#000000;
   --ok:#2C7A4B; --warn:#A86A12; --bad:#B42318; --holiday:#E4E6E9;
   --sans:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
   --serif:"Source Serif 4","Book Antiqua",Palatino,Georgia,serif;
@@ -11,14 +12,14 @@
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --paper:#14171B; --surface:#1D2127; --sunk:#181B20; --ink:#E8EBEF; --muted:#9AA3AE; --line:#333A43;
-    --silver:#3B424B; --accent:#8FA8FF; --accent-ink:#0E1424; --hi:#E3CC2A; --hi-ink:#16181B;
+    --paper:#0B0D10; --surface:#15181D; --sunk:#111418; --ink:#FFFFFF; --muted:#A1A9B4; --line:#2B313A;
+    --silver:#1E2229; --accent:#8EAEE8; --accent-ink:#000000; --accent-soft:#1A2436; --hi:#E3CC2A; --hi-ink:#000000;
     --ok:#5BC48A; --warn:#E5AA4D; --bad:#F27D70; --holiday:#2A2F36; color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --paper:#14171B; --surface:#1D2127; --sunk:#181B20; --ink:#E8EBEF; --muted:#9AA3AE; --line:#333A43;
-  --silver:#3B424B; --accent:#8FA8FF; --accent-ink:#0E1424; --hi:#E3CC2A; --hi-ink:#16181B;
+  --paper:#0B0D10; --surface:#15181D; --sunk:#111418; --ink:#FFFFFF; --muted:#A1A9B4; --line:#2B313A;
+  --silver:#1E2229; --accent:#8EAEE8; --accent-ink:#000000; --accent-soft:#1A2436; --hi:#E3CC2A; --hi-ink:#000000;
   --ok:#5BC48A; --warn:#E5AA4D; --bad:#F27D70; --holiday:#2A2F36; color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:inherit}
@@ -76,7 +77,7 @@ main{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);gap:20
 .legend i{display:inline-block;width:14px;height:4px;vertical-align:middle;margin-right:5px}
 
 /* summary */
-.sumhead{background:var(--hi);color:var(--hi-ink);display:flex;align-items:baseline;justify-content:space-between;padding:10px 14px;border-radius:8px 8px 0 0}
+.sumhead{background:var(--accent);color:var(--accent-ink);display:flex;align-items:baseline;justify-content:space-between;padding:10px 14px;border-radius:8px 8px 0 0}
 .sumhead h2{font:700 1.05rem/1.2 var(--serif);margin:0}
 .sumhead b{font-variant-numeric:tabular-nums}
 .sumrows{padding:6px 14px 12px}
@@ -93,11 +94,12 @@ main{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);gap:20
 .sumnote.warn{color:var(--warn)}
 
 /* editor */
-.edhead{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;padding:16px 18px 12px;border-bottom:1px solid var(--line);background:var(--silver);border-radius:8px 8px 0 0}
+.edhead{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;padding:16px 18px 12px;border-bottom:1px solid var(--line);background:var(--surface);border-radius:8px 8px 0 0}
 .edhead h2{font:700 1.35rem/1.2 var(--serif);margin:0;margin-right:auto}
 .tabs{display:flex;gap:2px;background:var(--surface);border-radius:6px;padding:2px;border:1px solid var(--line)}
 .tabs button{border:0;background:transparent;padding:6px 12px;border-radius:4px;cursor:pointer;font-weight:600;font-size:.85rem;color:var(--muted)}
 .tabs button[aria-selected="true"]{background:var(--ink);color:var(--surface)}
+.tabs{background:var(--sunk)}
 .daymeta{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid var(--line)}
 .pill{font-size:.85rem;font-weight:600;padding:3px 10px;border-radius:99px;background:var(--sunk);border:1px solid var(--line);font-variant-numeric:tabular-nums}
 .pill.ok{color:var(--ok)} .pill.partial{color:var(--warn)} .pill.over{color:var(--bad);border-color:var(--bad)}
@@ -173,20 +175,7 @@ table.month tr.tot td{font-weight:700;border-bottom:0}
 .mday .recs{padding-top:0}
 .mday .none{color:var(--muted);font-size:.88rem;margin:8px 0 14px}
 .sumhead small{font:500 .78rem/1 var(--sans);margin-left:6px;opacity:.75}
-table.month.edit{min-width:780px;table-layout:fixed}
-table.month.edit td{padding:5px 4px;vertical-align:top}
-table.month.edit th{padding:7px 4px}
-table.month.edit tr.daystart td{border-top:2px solid var(--line)}
-table.month.edit input,table.month.edit select,table.month.edit textarea{padding:5px 6px;font-size:.84rem}
-table.month.edit select{padding-right:2px}
-table.month.edit textarea{min-height:38px;resize:vertical}
-.datecell{background:var(--sunk);white-space:nowrap}
-.datecell .wdname{display:block;font-size:.72rem;color:var(--muted);margin:2px 0 6px}
 .linkish.small{font:600 .82rem/1.2 var(--sans)}
-.addrowbtn{padding:3px 7px;font-size:.74rem}
-.custsel{color:var(--accent);font-weight:700}
-.actsin{display:flex;flex-direction:column;gap:3px;align-items:center}
-td.acts .iconbtn{width:28px;height:28px;font-size:.85rem}
 table.month output{font-variant-numeric:tabular-nums}
 .day.pubhol .amt{color:var(--ink);font-weight:700;letter-spacing:.02em}
 .legend .holkey{height:10px;width:14px;background:repeating-linear-gradient(135deg,var(--muted) 0 2px,transparent 2px 4px)}
@@ -204,9 +193,7 @@ table.month output{font-variant-numeric:tabular-nums}
 .btn.quiet2{border-color:transparent;background:transparent;color:var(--muted)}
 .rec-n{display:flex;align-items:center;gap:6px;cursor:pointer}
 .reccheck{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;margin:0}
-.rec.checked{background:color-mix(in srgb,var(--bad) 6%,transparent);box-shadow:inset 3px 0 0 var(--bad);padding-left:10px;margin-left:-10px}
-table.month.edit tr.checked td{background:color-mix(in srgb,var(--bad) 7%,var(--surface))}
-table.month.edit th.acts{text-align:center}
+.rec.checked{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent);padding-left:10px;margin-left:-10px}
 .toast.actionable{pointer-events:auto;display:flex;align-items:center;gap:14px}
 .toastbtn{border:0;background:none;color:var(--hi);font-weight:700;cursor:pointer;padding:2px 4px;text-decoration:underline;text-underline-offset:3px}
 .exopts{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
@@ -256,7 +243,64 @@ table.month.edit th.acts{text-align:center}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--warn:#E5AA4D}}
 :root[data-theme="dark"]{--warn:#E5AA4D}
 
-/* phones and narrow windows */
+/* ---- editable month table: minimal ----
+   No fills or grid lines; one hairline per day, quiet uppercase headers.
+   Fields read as plain text until hovered/focused; row actions stay muted until the row is in use. */
+table.month.edit{min-width:780px;table-layout:fixed;font-size:.88rem}
+table.month.edit th{background:none;padding:10px 6px 8px;font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--ink)}
+table.month.edit th:first-child,table.month.edit td:first-child{padding-left:18px}
+table.month.edit th.acts{text-align:center;padding-right:12px}
+table.month.edit td{padding:4px 6px;vertical-align:top;border-bottom:0}
+table.month.edit tr.daystart td{border-top:1px solid var(--line)}
+table.month.edit thead+tbody tr.daystart:first-child td{border-top:0}
+table.month.edit tbody tr:not(.tot):hover td:not(.datecell){background:var(--sunk)}
+table.month.edit input,table.month.edit select,table.month.edit textarea{padding:6px 7px;font-size:.88rem;border-color:transparent;background:transparent;border-radius:6px;transition:border-color .15s ease-out,background-color .15s ease-out}
+table.month.edit input:hover,table.month.edit select:hover,table.month.edit textarea:hover{border-color:var(--line);background:var(--surface)}
+table.month.edit input:focus,table.month.edit select:focus,table.month.edit textarea:focus{border-color:var(--accent);background:var(--surface)}
+table.month.edit input::placeholder,table.month.edit textarea::placeholder{color:var(--muted);opacity:.8}
+table.month.edit select{padding-right:2px;cursor:pointer;text-overflow:ellipsis}
+table.month.edit textarea{min-height:34px;resize:none;line-height:1.45}
+table.month.edit .missing{border-color:transparent!important;box-shadow:inset 0 -2px 0 var(--warn)}
+table.month.edit td.num output{display:block;padding:7px 2px 0;color:var(--muted)}
+table.month.edit .dayscell input{text-align:right;font-variant-numeric:tabular-nums}
+.datecell{white-space:nowrap;padding-top:9px!important}
+.datecell .linkish.small{font:600 .88rem/1.2 var(--sans);text-decoration:none;color:var(--ink)}
+.datecell .linkish.small:hover{color:var(--accent);text-decoration:underline}
+.datecell .wdname{display:block;font-size:.75rem;color:var(--muted);margin:2px 0 4px}
+.addrowbtn{display:inline-flex;align-items:center;gap:3px;border:0;background:none;padding:2px 0;color:var(--accent);font-weight:600;font-size:.76rem;cursor:pointer;opacity:.8}
+.addrowbtn svg{width:14px;height:14px}
+.addrowbtn:hover{opacity:1;text-decoration:underline;text-underline-offset:3px}
+.custsel{color:var(--accent);font-weight:600}
+.actsin{display:flex;flex-direction:column;gap:2px;align-items:center;padding-top:2px}
+td.acts .iconbtn{width:28px;height:28px;border-color:transparent;background:transparent;color:var(--muted)}
+td.acts .iconbtn:hover{background:var(--surface);border-color:var(--line);color:var(--ink)}
+td.acts .iconbtn.del:hover{color:var(--bad);border-color:var(--bad)}
+td.acts .iconbtn svg{width:16px;height:16px}
+td.acts .actsin>*{opacity:.35;transition:opacity .15s ease-out}
+tr:hover td.acts .actsin>*,tr:focus-within td.acts .actsin>*,tr.checked td.acts .actsin>*,td.acts .actsin>*:focus-visible,td.acts .reccheck:checked{opacity:1}
+table.month.edit tr.checked td:not(.datecell){background:var(--accent-soft)}
+table.month.edit tr.hol td{background:none}
+table.month.edit tr.hol td:not(.datecell) input{background:var(--sunk);font-style:italic}
+table.month.edit tr.tot td{border-top:1px solid var(--ink);padding-top:10px;padding-bottom:12px;font-size:.82rem;letter-spacing:.04em}
+table.month.edit tr.tot:hover td{background:none}
+.edfoot.danger-zone .btn.danger{border-color:transparent;background:none}
+.edfoot.danger-zone .btn.danger:hover{background:color-mix(in srgb,var(--bad) 8%,var(--surface))}
+@media (pointer:coarse){td.acts .actsin>*{opacity:1}}
+@media (prefers-reduced-motion:reduce){table.month.edit input,table.month.edit select,table.month.edit textarea,td.acts .actsin>*{transition:none}}
+
+/* PDF preview */
+.modal.wide{width:min(1000px,100%);display:flex;flex-direction:column;height:calc(100dvh - 48px - env(safe-area-inset-top,0px))}
+.pvtitle{display:flex;flex-direction:column;min-width:0}
+.pvtitle small{color:var(--muted);font-size:.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.modal header .iconbtn{border-color:transparent}
+.pvbody{flex:1;min-height:0;background:var(--sunk);display:flex}
+.pvframe{flex:1;width:100%;height:100%;border:0;display:block}
+.pvfallback{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;height:100%;padding:24px;text-align:center;color:var(--muted)}
+.pvfallback p{margin:0}
+.pvfallback a{text-decoration:none;color:var(--ink)}
+.pvback{margin-right:auto}
+@media (max-width:600px){.modal.wide{height:calc(100dvh - 24px)}.overlay:has(.modal.wide){padding:12px 8px}.pvback{display:none}}
+
 @media (max-width:720px){
   .bar{position:static;padding:10px 12px}
   body::before{display:none}
@@ -300,6 +344,14 @@ table.month.edit th.acts{text-align:center}
   table.month.edit .actsin{flex-direction:row;justify-content:flex-end;gap:8px}
   table.month.edit tr.tot{display:flex;justify-content:flex-end;gap:16px}
   table.month.edit tr.tot td:empty{display:none}
+  table.month.edit th:first-child,table.month.edit td:first-child{padding-left:0}
+  table.month.edit td{padding:0!important}
+  table.month.edit tr.tot{border-top:1px solid var(--ink)}
+  table.month.edit tr.tot td{border-top:0}
+  table.month.edit input,table.month.edit select,table.month.edit textarea{border-color:var(--line);background:var(--surface)}
+  table.month.edit .missing{border-color:var(--warn)!important;box-shadow:none}
+  table.month.edit td.num output{padding:7px 0 0}
+  table.month.edit .dayscell input{text-align:left}
 }
 /* touch screens: 44px targets, 16px inputs (no iOS zoom) */
 @media (pointer:coarse){
