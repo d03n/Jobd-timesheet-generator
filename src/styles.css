@@ -178,6 +178,7 @@ table.month tr.tot td{font-weight:700;border-bottom:0}
 .linkish.small{font:600 .82rem/1.2 var(--sans)}
 table.month output{font-variant-numeric:tabular-nums}
 .day.pubhol .amt{color:var(--ink);font-weight:700;letter-spacing:.02em}
+.day .holemoji{font-size:1rem;line-height:1}
 .legend .holkey{height:10px;width:14px;background:repeating-linear-gradient(135deg,var(--muted) 0 2px,transparent 2px 4px)}
 .holnote{font-size:.75rem;color:var(--muted);padding:0 14px 14px;margin-top:-6px}
 .holbanner{padding:10px 18px;background:var(--holiday);border-bottom:1px solid var(--line);font-size:.88rem}
