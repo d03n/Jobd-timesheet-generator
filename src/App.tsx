@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { ExportFormat } from './types';
 import { StoreProvider, useStore } from './state/store';
-import { buildExport, runExport, type BuiltFile } from './lib/exporter';
+import { buildExport, runExport, type BuiltFile, type ExportRequest } from './lib/exporter';
 import { saveBlob } from './lib/download';
 import { Header } from './components/Header';
 import { Calendar } from './components/Calendar';
@@ -31,23 +30,23 @@ function Shell() {
     return () => window.removeEventListener('resize', measure);
   }, []);
 
-  const doExport = async (fmt: ExportFormat, only: string[] | null, suffix: string) => {
+  const doExport = async (req: ExportRequest) => {
     setBusy(true);
     try {
-      const name = await runExport(fmt, s.settings, s.curYM, s.month, only, suffix);
+      const name = await runExport(s.settings, s.months, req);
       s.showToast(`Saved ${name}`);
     } catch {
-      s.showToast(`Couldn’t build the ${fmt === 'pdf' ? 'PDF' : 'Excel file'}. Try again, or reload the page.`);
+      s.showToast(`Couldn’t build the ${req.fmt === 'pdf' ? 'PDF' : 'Excel file'}. Try again, or reload the page.`);
     } finally {
       setBusy(false);
       requestAnimationFrame(() => document.getElementById('download')?.focus());
     }
   };
 
-  const doPreview = async (only: string[] | null, suffix: string) => {
+  const doPreview = async (req: ExportRequest) => {
     setBusy(true);
     try {
-      setPreview(await buildExport('pdf', s.settings, s.curYM, s.month, only, suffix));
+      setPreview(await buildExport(s.settings, s.months, { ...req, fmt: 'pdf' }));
     } catch {
       s.showToast('Couldn’t build the PDF preview. Try again, or reload the page.');
       requestAnimationFrame(() => document.getElementById('download')?.focus());

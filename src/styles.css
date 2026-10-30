@@ -203,6 +203,12 @@ table.month output{font-variant-numeric:tabular-nums}
 .exopt span{display:flex;flex-direction:column;gap:2px}
 .exopt small{color:var(--muted);font-size:.82rem}
 .exopt.disabled{opacity:.5;cursor:default}
+.exgroup{display:flex;flex-direction:column;gap:10px}
+.exrange{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.exrange input[type=date]{border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:7px 9px;width:100%;min-width:0}
+.exrange input[aria-invalid=true]{border-color:var(--bad)}
+.exhelp{grid-column:1/-1;margin:0;font-size:.8rem;color:var(--muted)}
+.exhelp.bad{color:var(--bad);font-weight:600}
 
 /* ---- UX pass: z-index scale 10 header · 20 sticky bars · 50 overlays · 60 toast ---- */
 .skip{position:absolute;left:12px;top:-60px;z-index:70;background:var(--ink);color:var(--surface);padding:10px 14px;border-radius:6px;font-weight:600;text-decoration:none}

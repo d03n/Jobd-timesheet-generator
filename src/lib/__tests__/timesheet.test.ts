@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest';
 import Excel from 'exceljs';
 import type { MonthData, Settings } from '../../types';
 import { DEFAULT_SETTINGS } from '../storage';
-import { computeSheet, listedDates, suggestedFileName } from '../sheet';
+import { computeSheet, exportParts, listedDates, mergeMonths, periodFileName, periodLabel, periodMonths, sheetName, splitByMonth, suggestedFileName } from '../sheet';
 import { holidayName } from '../holidays';
-import { buildWorkbook } from '../workbook';
+import { buildPartsWorkbook, buildWorkbook } from '../workbook';
+import { buildPartsPdf } from '../pdf';
 import { importTimesheet } from '../importer';
 
 const settings: Settings = { ...DEFAULT_SETTINGS, staffName: 'Test Person', customers: ['LHB', 'CIMB', 'KTC'] };
@@ -75,7 +76,7 @@ describe('buildWorkbook', () => {
   it('round-trips through the importer', async () => {
     const buf = await workbook.xlsx.writeBuffer();
     const res = await importTimesheet(Excel, buf as ArrayBuffer, settings);
-    expect(res.ym).toBe('2024-10');
+    expect(res.period).toEqual({ start: '2024-10-01', end: '2024-10-31' });
     expect(res.count).toBe(4);
     expect(res.staff).toBe('Test Person');
     expect(res.days['2024-10-23'].holiday).toBe('Public holiday');
@@ -86,5 +87,87 @@ describe('buildWorkbook', () => {
 describe('suggestedFileName', () => {
   it('uses the first name, month and suffix', () => {
     expect(suggestedFileName(settings, '2024-10', '_entries', 'pdf')).toBe('Test_Job-D_Oct_2024_entries.pdf');
+  });
+});
+
+describe('periods across months', () => {
+  const cut = { start: '2026-10-21', end: '2026-11-20' };
+  const months = {
+    '2026-10': { days: {
+      '2026-10-20': { holiday: '', records: [{ id: 'x', desc: 'Before the cut-off', ref: '', cat: 'IR', cust: 'LHB', days: 1 }] },
+      '2026-10-21': { holiday: '', records: [{ id: 'a', desc: 'Oct work', ref: '', cat: 'IR', cust: 'LHB', days: 1 }] },
+    } },
+    '2026-11': { days: {
+      '2026-11-02': { holiday: '', records: [{ id: 'b', desc: 'Nov work', ref: '', cat: 'CR-DEV', cust: 'CIMB', days: 0.5 }] },
+      '2026-11-25': { holiday: '', records: [{ id: 'y', desc: 'After the cut-off', ref: '', cat: 'IR', cust: 'KTC', days: 1 }] },
+    } },
+  };
+
+  it('splits, labels and names a cut-off period', () => {
+    expect(periodMonths(cut)).toEqual(['2026-10', '2026-11']);
+    expect(periodMonths({ start: '2026-12-21', end: '2027-01-20' })).toEqual(['2026-12', '2027-01']);
+    expect(splitByMonth(cut)).toEqual([{ start: '2026-10-21', end: '2026-10-31' }, { start: '2026-11-01', end: '2026-11-20' }]);
+    expect(periodLabel(cut)).toBe('21 Oct – 20 Nov 2026');
+    expect(periodLabel({ start: '2026-10-01', end: '2026-10-31' })).toBe('October 2026');
+    expect(periodLabel({ start: '2026-12-21', end: '2027-01-20' })).toBe('21 Dec 2026 – 20 Jan 2027');
+    expect(sheetName(cut)).toBe('JobD-21Oct-20Nov-2026');
+    expect(sheetName({ start: '2026-10-21', end: '2026-10-31' })).toBe('JobD-21-31Oct-2026');
+    expect(sheetName({ start: '2026-12-21', end: '2027-01-20' }).length).toBeLessThanOrEqual(31);
+    expect(periodFileName(settings, cut, '', 'pdf')).toBe('Test_Job-D_21Oct2026-20Nov2026.pdf');
+    expect(periodFileName(settings, { start: '2026-10-01', end: '2026-10-31' })).toBe('Test_Job-D_Oct_2026.xlsx');
+  });
+
+  it('only counts days inside the period', () => {
+    const merged = mergeMonths(months, cut);
+    expect(Object.keys(merged.days).sort()).toEqual(['2026-10-21', '2026-11-02']);
+    const data = computeSheet(settings, cut, merged);
+    expect(data.total).toBe(1.5);
+    expect(data.rows[0].date).toBe('2026-10-21');
+  });
+
+  it('builds one sheet per month, or one combined sheet', async () => {
+    const per = buildPartsWorkbook(Excel, settings, exportParts(months, cut, null, 'per-month'));
+    expect(per.sheets.map((x) => [x.sheetName, x.total])).toEqual([['JobD-21-31Oct-2026', 1], ['JobD-1-20Nov-2026', 0.5]]);
+    const one = buildPartsWorkbook(Excel, settings, exportParts(months, cut, null, 'combined'));
+    expect(one.sheets.map((x) => [x.sheetName, x.total])).toEqual([['JobD-21Oct-20Nov-2026', 1.5]]);
+
+    // Both layouts import back to the same days, across both months.
+    for (const wb of [per.workbook, one.workbook]) {
+      const res = await importTimesheet(Excel, (await wb.xlsx.writeBuffer()) as ArrayBuffer, settings);
+      expect(res.period).toEqual({ start: '2026-10-21', end: '2026-11-20' });
+      expect(res.count).toBe(2);
+      expect(res.days['2026-11-02'].records[0]).toMatchObject({ desc: 'Nov work', days: 0.5 });
+    }
+  });
+
+  it('leaves out months with no chosen days', () => {
+    const parts = exportParts(months, cut, ['2026-11-02'], 'per-month');
+    expect(parts.map((p) => p.name)).toEqual(['JobD-1-20Nov-2026']);
+  });
+
+  it('starts each PDF section on a new page', () => {
+    const per = buildPartsPdf(settings, exportParts(months, cut, null, 'per-month'));
+    const one = buildPartsPdf(settings, exportParts(months, cut, null, 'combined'));
+    expect(per.getNumberOfPages()).toBe(one.getNumberOfPages() + 1);
+  });
+});
+
+describe('import keeps to the dates in the file', () => {
+  const oct = { '2024-10': month };
+
+  it('lists only the dates the file contains, so other days are not replaced', async () => {
+    const wb = buildPartsWorkbook(Excel, settings, exportParts(oct, { start: '2024-10-01', end: '2024-10-31' }, ['2024-10-01', '2024-10-04'], 'combined')).workbook;
+    const res = await importTimesheet(Excel, (await wb.xlsx.writeBuffer()) as ArrayBuffer, settings);
+    expect(Object.keys(res.days).sort()).toEqual(['2024-10-01', '2024-10-04']);
+    expect(res.ym).toBe('2024-10');
+  });
+
+  it('does not double entries when sheets overlap', async () => {
+    const p = { start: '2024-10-01', end: '2024-10-31' };
+    const parts = [...exportParts(oct, p, null, 'combined'), { ...exportParts(oct, p, null, 'combined')[0], name: 'Copy' }];
+    const wb = buildPartsWorkbook(Excel, settings, parts).workbook;
+    const res = await importTimesheet(Excel, (await wb.xlsx.writeBuffer()) as ArrayBuffer, settings);
+    expect(res.count).toBe(4);
+    expect(res.days['2024-10-01'].records).toHaveLength(2);
   });
 });

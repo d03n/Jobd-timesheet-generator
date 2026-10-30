@@ -1,7 +1,7 @@
 import type ExcelJSNs from 'exceljs';
 import type { MonthData, Settings } from '../types';
-import { MONTHS_SHORT, round3 } from './dates';
-import { sheetRows } from './sheet';
+import { round3 } from './dates';
+import { exportParts, monthPeriod, sheetRows, type Scope, type SheetPart } from './sheet';
 
 type ExcelJS = typeof ExcelJSNs;
 type Border = Partial<ExcelJSNs.Borders>;
@@ -13,20 +13,30 @@ const YELLOW = 'FFFFFF00';
 const GREY = 'FFD9D9D9';
 const FIRST_ROW = 7;
 
+/** Single month (or the given days of it) as a one-sheet workbook. */
+export function buildWorkbook(Excel: ExcelJS, settings: Settings, ym: string, month: MonthData, only?: string[] | null) {
+  const { workbook, sheets } = buildPartsWorkbook(Excel, settings, exportParts({ [ym]: month }, monthPeriod(ym), only ?? null, 'combined'));
+  return { workbook, ...sheets[0] };
+}
+
+/** One worksheet per part (see exportParts), each with its own TOTAL and SUMMARY. */
+export function buildPartsWorkbook(Excel: ExcelJS, settings: Settings, parts: SheetPart[]) {
+  const wb = new Excel.Workbook();
+  wb.creator = 'Job-D Timesheet Builder';
+  const sheets = parts.map((p) => ({ sheetName: p.name, ...addJobDSheet(wb, settings, p.name, p.period, p.month, p.only) }));
+  return { workbook: wb, sheets };
+}
+
 /**
- * Builds the Job-D sheet with live Excel formulas:
+ * Adds a Job-D sheet with live Excel formulas:
  * utilization = G/total, TOTAL = SUM, customer rows = SUMIF minus leave SUMIFS, leave rows = SUMIF on category.
  * The category list (dropdown source) is written below the summary and hidden.
  */
-export function buildWorkbook(Excel: ExcelJS, settings: Settings, ym: string, month: MonthData, only?: string[] | null) {
+function addJobDSheet(wb: ExcelJSNs.Workbook, settings: Settings, sheetName: string, scope: Scope, month: MonthData, only?: string[] | null) {
   const thin = { style: 'thin' as const };
   const med = { style: 'medium' as const };
   const box: Border = { top: thin, left: thin, bottom: thin, right: thin };
-  const [y, mo] = ym.split('-').map(Number);
-  const sheetName = `JobD-${MONTHS_SHORT[mo - 1]}-${y}`;
 
-  const wb = new Excel.Workbook();
-  wb.creator = 'Job-D Timesheet Builder';
   const ws = wb.addWorksheet(sheetName, {
     pageSetup: {
       paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0,
@@ -81,7 +91,7 @@ export function buildWorkbook(Excel: ExcelJS, settings: Settings, ym: string, mo
   ws.getRow(6).height = 24;
 
   // Layout
-  const rows = sheetRows(settings, ym, month, only);
+  const rows = sheetRows(settings, scope, month, only);
   const spare = Math.max(0, Math.floor(settings.spareRows) || 0);
   for (let s = 0; s < spare; s++) rows.push({ date: null });
   if (!rows.length) rows.push({ date: null });
@@ -212,5 +222,5 @@ export function buildWorkbook(Excel: ExcelJS, settings: Settings, ym: string, mo
   for (let r = leaveEnd + 1; r <= Math.max(catEnd, catLabel); r++) ws.getRow(r).hidden = true;
 
   ws.pageSetup.printArea = `B1:H${Math.max(leaveEnd, custEnd, sRow)}`;
-  return { workbook: wb, sheetName, total, rows: rows.length };
+  return { total, rows: rows.length };
 }

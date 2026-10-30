@@ -1,6 +1,7 @@
 import { useRef, type ChangeEvent, type KeyboardEvent } from 'react';
 import { useStore } from '../state/store';
-import { monthLabel, plural } from '../lib/dates';
+import { plural } from '../lib/dates';
+import { periodLabel } from '../lib/sheet';
 import { Icon } from './Icon';
 
 interface HeaderProps {
@@ -20,8 +21,9 @@ export function Header({ busy, onDownload, onSettings }: HeaderProps) {
     try {
       const [{ default: Excel }, { importTimesheet }] = await Promise.all([import('exceljs'), import('../lib/importer')]);
       const res = await importTimesheet(Excel, await file.arrayBuffer(), s.settings);
+      const label = periodLabel(res.period);
       const apply = () => {
-        s.replaceMonth(res.ym, { days: res.days });
+        s.replaceDays(res.days);
         if (res.customers.length || res.categories.length || (res.staff && !s.settings.staffName)) {
           s.updateSettings((st) => {
             st.customers.push(...res.customers);
@@ -30,13 +32,17 @@ export function Header({ busy, onDownload, onSettings }: HeaderProps) {
           });
         }
         s.goMonth(res.ym);
-        s.showToast(`Imported ${plural(res.count, 'entry', 'entries')} for ${monthLabel(res.ym)}.`);
+        s.showToast(`Imported ${plural(res.count, 'entry', 'entries')} for ${label}.`);
       };
-      const existing = Object.values(s.months[res.ym]?.days ?? {}).some((d) => d.records.length || d.holiday);
+      const dates = Object.keys(res.days);
+      const existing = dates.some((k) => {
+        const d = s.months[k.slice(0, 7)]?.days[k];
+        return !!d && (d.records.length > 0 || !!d.holiday);
+      });
       if (existing) {
         s.ask({
-          title: `Replace ${monthLabel(res.ym)}?`,
-          msg: `This file has ${plural(res.count, 'entry', 'entries')}. They’ll replace what you’ve already entered for that month.`,
+          title: `Replace ${label}?`,
+          msg: `This file has ${plural(res.count, 'entry', 'entries')} from ${label}. They’ll replace what you’ve entered on the ${plural(dates.length, 'date')} the file lists. Other days aren’t touched.`,
           yesLabel: 'Replace',
           onYes: apply,
         });
