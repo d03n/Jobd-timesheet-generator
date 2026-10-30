@@ -1,0 +1,29 @@
+{
+  "name": "jobd-timesheet",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Job-D timesheet builder: log daily work on a calendar and export the Silverlake Job-D sheet to Excel (with live formulas) or PDF.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "exceljs": "4.4.0",
+    "jspdf": "2.5.1",
+    "jspdf-autotable": "3.8.2",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "@vitejs/plugin-react": "4.3.1",
+    "typescript": "5.4.5",
+    "vite": "5.3.1",
+    "vitest": "1.6.0"
+  }
+}
