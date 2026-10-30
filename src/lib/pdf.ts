@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+// The ESM entry: the package root is a UMD file whose default export doesn't survive Vite 8's CJS interop.
+import autoTable from 'jspdf-autotable/es';
 import type { MonthData, Settings } from '../types';
 import { fmtDays, fmtDMY, fmtPct } from './dates';
 import { computeSheet } from './sheet';
