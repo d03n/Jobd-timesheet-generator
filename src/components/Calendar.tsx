@@ -106,7 +106,7 @@ export function Calendar() {
               onClick={(e) => onClick(e, key)}
             >
               <span className="n">{d}</span>
-              <span className="amt">{tot ? `${fmtDays(tot)}${tot > 1.0001 ? '!' : ''}` : hname ? 'Hol' : ''}</span>
+              <span className="amt">{tot ? `${fmtDays(tot)}${tot > 1.0001 ? '!' : ''}` : hname ? <span className="holemoji" aria-hidden="true">😻</span> : ''}</span>
               <span className="fillbar" />
             </button>
           );
