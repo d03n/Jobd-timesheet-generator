@@ -1,17 +1,27 @@
 import { jsPDF } from 'jspdf';
 // The ESM entry: the package root is a UMD file whose default export doesn't survive Vite 8's CJS interop.
 import autoTable from 'jspdf-autotable/es';
-import type { MonthData, Settings } from '../types';
+import type { Settings, SheetData } from '../types';
 import { fmtDays, fmtDMY, fmtPct } from './dates';
-import { computeSheet } from './sheet';
+import { computeSheet, type SheetPart } from './sheet';
 
-/** PDF version of the Job-D sheet: same layout and numbers as the Excel export. */
-export function buildPdf(settings: Settings, ym: string, month: MonthData, only?: string[] | null): jsPDF {
-  const data = computeSheet(settings, ym, month, only);
+const M = 32;
+
+/** PDF version of the Job-D sheet, one section per part (see exportParts): same layout and numbers as the Excel export.
+ * Each section starts on a new page with its own TOTAL and SUMMARY. */
+export function buildPartsPdf(settings: Settings, parts: SheetPart[]): jsPDF {
   const doc = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait' });
+  parts.forEach((p, i) => {
+    if (i > 0) doc.addPage();
+    drawSheet(doc, settings, computeSheet(settings, p.period, p.month, p.only));
+  });
+  return numberPages(doc);
+}
+
+/** Draws the title block, table and summary starting at the top of the current page. */
+function drawSheet(doc: jsPDF, settings: Settings, data: SheetData): void {
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
-  const M = 32;
 
   doc.setFont('times', 'bold');
   doc.setFontSize(20);
@@ -94,7 +104,11 @@ export function buildPdf(settings: Settings, ym: string, month: MonthData, only?
     doc.text(fmtPct(s.days, data.total), 420, y, { align: 'right' });
     y += 16;
   });
+}
 
+function numberPages(doc: jsPDF): jsPDF {
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
   const pages = doc.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);

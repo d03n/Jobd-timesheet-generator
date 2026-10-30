@@ -17,8 +17,11 @@ entries are saved in the browser's local storage.
 - **Copy / paste** entries between days, add the same entry to many days, copy the previous day.
 - **Multi-delete and clear month**, each with Undo.
 - **Bank of Thailand holidays** for 2026–2027 built in, plus your own custom holidays.
-- **Import** an existing Job-D `.xlsx`.
-- **Export** the whole month, only days with entries, or the selected days:
+- **Import** an existing Job-D `.xlsx` — every worksheet and every month in it. Only the dates the
+  file covers are replaced; other days are left alone.
+- **Export** the whole month, only days with entries, or the selected days — or any **date range**
+  (e.g. a 21 Oct – 20 Nov cut-off). A range spanning several months exports as one sheet per month
+  or as one combined sheet, each with its own TOTAL and SUMMARY:
   - **Excel**: `% of Utilization = G/TOTAL`, `TOTAL = SUM`, customer rows use `SUMIF` minus
     leave `SUMIFS`, leave rows use `SUMIF` on category, Category/Customer cells have dropdowns,
     and the category list is hidden below the summary.
@@ -28,7 +31,7 @@ entries are saved in the browser's local storage.
 
 ## Getting started
 
-Requires Node.js 18 or later.
+Requires Node.js 22.12 or later. See [docs/deployment.md](docs/deployment.md) for deployment.
 
 ```bash
 npm install
@@ -68,6 +71,7 @@ src/
                            Settings/Export/Confirm dialogs, Modal, Toast, icons
 legacy/
   jobd-timesheet.html      The original single-file version, kept for reference
+docs/                      Project documentation: deployment, feature behaviour, decisions
 ```
 
 ## Updating holidays

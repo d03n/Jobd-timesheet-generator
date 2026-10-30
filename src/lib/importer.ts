@@ -2,11 +2,16 @@ import type ExcelJSNs from 'exceljs';
 import type { DayData } from '../types';
 import { pad } from './dates';
 import { rid } from './ids';
+import type { Period } from './sheet';
 
 type ExcelJS = typeof ExcelJSNs;
 
 export interface ImportResult {
+  /** First to last date found in the file (for labels; only the dates in `days` are replaced). */
+  period: Period;
+  /** The month with the most dates, to show after importing. */
   ym: string;
+  /** Every date listed in the file, including empty rows and holiday notes. */
   days: Record<string, DayData>;
   staff: string | null;
   customers: string[];
@@ -37,24 +42,25 @@ function toDateKey(v: ExcelJSNs.CellValue): string | null {
   return m ? `${m[3]}-${pad(Number(m[2]))}-${pad(Number(m[1]))}` : null;
 }
 
-/** Reads an existing Job-D sheet (header row containing "Job Description", data until TOTAL/SUMMARY). */
-export async function importTimesheet(Excel: ExcelJS, buf: ArrayBuffer, known: { customers: string[]; categories: string[] }): Promise<ImportResult> {
-  const wb = new Excel.Workbook();
-  await wb.xlsx.load(buf);
-  const ws = wb.worksheets[0];
-  if (!ws) throw new Error('The file has no worksheets.');
+interface Acc {
+  days: Record<string, DayData>;
+  staff: string | null;
+  customers: string[];
+  categories: string[];
+}
 
+/** Reads one Job-D worksheet (header row containing "Job Description", data until TOTAL/SUMMARY). Returns false if it isn't one. */
+function readSheet(ws: ExcelJSNs.Worksheet, known: { customers: string[]; categories: string[] }, acc: Acc): boolean {
   const col = { date: 2, desc: 3, ref: 4, cat: 5, cust: 6, days: 7 };
   let hdr = 0;
-  let staff: string | null = null;
   for (let r = 1; r <= Math.min(20, ws.rowCount) && !hdr; r++) {
     ws.getRow(r).eachCell((c) => {
       const t = textOf(c.value);
-      if (/^staff name:/i.test(t)) staff = t.replace(/^staff name:\s*/i, '').trim();
+      if (/^staff name:/i.test(t) && !acc.staff) acc.staff = t.replace(/^staff name:\s*/i, '').trim() || null;
       if (t.toLowerCase().replace(/\s+/g, ' ') === 'job description') hdr = r;
     });
   }
-  if (!hdr) throw new Error('Couldn’t find the “Job Description” header row.');
+  if (!hdr) return false;
   ws.getRow(hdr).eachCell((c, ci) => {
     const lo = textOf(c.value).toLowerCase().replace(/\s+/g, ' ');
     if (lo === 'date') col.date = ci;
@@ -65,12 +71,9 @@ export async function importTimesheet(Excel: ExcelJS, buf: ArrayBuffer, known: {
     else if (/days/.test(lo)) col.days = ci;
   });
 
-  const days: Record<string, DayData> = {};
-  const counts: Record<string, number> = {};
-  const customers: string[] = [];
-  const categories: string[] = [];
+  // A date already read from an earlier worksheet is skipped, so overlapping sheets don't double entries.
+  const earlier = new Set(Object.keys(acc.days));
   let cur: string | null = null;
-
   for (let r = hdr + 1; r <= ws.rowCount; r++) {
     const row = ws.getRow(r);
     let stop = false;
@@ -80,36 +83,42 @@ export async function importTimesheet(Excel: ExcelJS, buf: ArrayBuffer, known: {
     });
     if (stop) break;
     const dk = toDateKey(row.getCell(col.date).value);
-    if (dk) {
-      cur = dk;
-      counts[dk.slice(0, 7)] = (counts[dk.slice(0, 7)] ?? 0) + 1;
-    }
-    if (!cur) continue;
+    if (dk) cur = dk;
+    if (!cur || earlier.has(cur)) continue;
     const g = (k: keyof typeof col) => textOf(row.getCell(col[k]).value);
     const desc = g('desc'), ref = g('ref'), cat = g('cat'), cust = g('cust');
     const rawDays = cellText(row.getCell(col.days).value);
     const n = rawDays === '' || rawDays instanceof Date ? NaN : Number(rawDays);
     const daysVal: number | '' = Number.isNaN(n) ? '' : n;
-    const day = (days[cur] ??= { holiday: '', records: [] });
+    const day = (acc.days[cur] ??= { holiday: '', records: [] });
     if (!desc && !ref && !cat && !cust && daysVal === '') continue;
     if (desc && !ref && !cat && !cust && daysVal === '') {
       day.holiday = desc;
       continue;
     }
     day.records.push({ id: rid(), desc, ref, cat, cust, days: daysVal });
-    if (cust && !known.customers.includes(cust) && !customers.includes(cust)) customers.push(cust);
-    if (cat && !known.categories.includes(cat) && !categories.includes(cat)) categories.push(cat);
+    if (cust && !known.customers.includes(cust) && !acc.customers.includes(cust)) acc.customers.push(cust);
+    if (cat && !known.categories.includes(cat) && !acc.categories.includes(cat)) acc.categories.push(cat);
   }
+  return true;
+}
 
-  const ym = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
-  if (!ym) throw new Error('No dates found in the Date column.');
-  const monthDays: Record<string, DayData> = {};
-  let count = 0;
-  for (const [k, v] of Object.entries(days)) {
-    if (k.startsWith(ym)) {
-      monthDays[k] = v;
-      count += v.records.length;
-    }
-  }
-  return { ym, days: monthDays, staff, customers, categories, count };
+/** Reads every Job-D worksheet in the file, across as many months as it covers. */
+export async function importTimesheet(Excel: ExcelJS, buf: ArrayBuffer, known: { customers: string[]; categories: string[] }): Promise<ImportResult> {
+  const wb = new Excel.Workbook();
+  await wb.xlsx.load(buf);
+  if (!wb.worksheets.length) throw new Error('The file has no worksheets.');
+
+  const acc: Acc = { days: {}, staff: null, customers: [], categories: [] };
+  let found = 0;
+  for (const ws of wb.worksheets) if (ws.state !== 'hidden' && ws.state !== 'veryHidden' && readSheet(ws, known, acc)) found++;
+  if (!found) throw new Error('Couldn’t find the “Job Description” header row.');
+
+  const keys = Object.keys(acc.days).sort();
+  if (!keys.length) throw new Error('No dates found in the Date column.');
+  const count = Object.values(acc.days).reduce((a, d) => a + d.records.length, 0);
+  const perMonth: Record<string, number> = {};
+  for (const k of keys) perMonth[k.slice(0, 7)] = (perMonth[k.slice(0, 7)] ?? 0) + 1;
+  const ym = Object.keys(perMonth).sort((a, b) => perMonth[b] - perMonth[a])[0];
+  return { period: { start: keys[0], end: keys[keys.length - 1] }, ym, days: acc.days, staff: acc.staff, customers: acc.customers, categories: acc.categories, count };
 }

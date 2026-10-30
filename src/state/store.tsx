@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { EntryRecord, MonthData, Months, Settings, View } from '../types';
+import type { DayData, EntryRecord, MonthData, Months, Settings, View } from '../types';
 import { daysIn, isWeekend, monthKeys, pad, round3, todayKey } from '../lib/dates';
 import { holidayName } from '../lib/holidays';
 import { clone } from '../lib/ids';
@@ -35,6 +35,8 @@ export interface Store {
   goMonth: (ym: string) => void;
   mutateMonth: (fn: (m: MonthData) => void, ym?: string) => void;
   replaceMonth: (ym: string, m: MonthData) => void;
+  /** Overwrites exactly these dates (any month); other days are left alone. */
+  replaceDays: (days: Record<string, DayData>) => void;
   renameEverywhere: (field: 'cust' | 'cat', from: string, to: string) => void;
 
   selDate: string;
@@ -133,6 +135,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const replaceMonth = useCallback((ym: string, m: MonthData) => setMonths((prev) => ({ ...prev, [ym]: m })), []);
+
+  const replaceDays = useCallback((days: Record<string, DayData>) => {
+    setMonths((prev) => {
+      const next = { ...prev };
+      for (const [k, d] of Object.entries(days)) {
+        const ym = k.slice(0, 7);
+        if (next[ym] === prev[ym]) next[ym] = clone(prev[ym] ?? EMPTY_MONTH);
+        next[ym].days[k] = d;
+      }
+      return next;
+    });
+  }, []);
 
   const renameEverywhere = useCallback((field: 'cust' | 'cat', from: string, to: string) => {
     setMonths((prev) => {
@@ -245,6 +259,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     goMonth,
     mutateMonth,
     replaceMonth,
+    replaceDays,
     renameEverywhere,
     selDate,
     selected,

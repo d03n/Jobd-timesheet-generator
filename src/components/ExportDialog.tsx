@@ -1,30 +1,58 @@
 import { useEffect, useState } from 'react';
 import type { ExportFormat } from '../types';
 import { useStore } from '../state/store';
-import { monthLabel, plural } from '../lib/dates';
+import { plural } from '../lib/dates';
+import type { ExportRequest } from '../lib/exporter';
+import { mergeMonths, monthPeriod, periodLabel, periodLength, periodMonths, splitByMonth, type ExportLayout, type Period } from '../lib/sheet';
 import { Modal } from './Modal';
 import { Icon } from './Icon';
 
-type Mode = 'month' | 'entries' | 'selected';
+type Mode = 'all' | 'entries' | 'selected';
+type PeriodMode = 'month' | 'range';
+
+/** Longest range one export may cover. */
+const MAX_DAYS = 366;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 interface ExportDialogProps {
   open: boolean;
   onClose: () => void;
-  onExport: (fmt: ExportFormat, only: string[] | null, suffix: string) => void;
-  onPreview: (only: string[] | null, suffix: string) => void;
+  onExport: (req: ExportRequest) => void;
+  onPreview: (req: ExportRequest) => void;
+}
+
+function rangeError(start: string, end: string): string {
+  if (!DATE_RE.test(start) || !DATE_RE.test(end)) return 'Enter both a start and an end date.';
+  if (start > end) return 'The end date is before the start date. Swap them, or pick a later end date.';
+  if (periodLength({ start, end }) > MAX_DAYS) return `The range is longer than ${MAX_DAYS} days. Pick a shorter range, or export it in parts.`;
+  return '';
 }
 
 export function ExportDialog({ open, onClose, onExport, onPreview }: ExportDialogProps) {
   const s = useStore();
   const [fmt, setFmt] = useState<ExportFormat>('xlsx');
-  const [lastMode, setLastMode] = useState<Mode>('month');
-  const [mode, setMode] = useState<Mode>('month');
-  const label = monthLabel(s.curYM);
-  const filled = Object.keys(s.month.days).filter((k) => s.month.days[k].records.length > 0).sort();
-  const sel = s.scopeKeys;
+  const [periodMode, setPeriodMode] = useState<PeriodMode>('month');
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
+  const [layout, setLayout] = useState<ExportLayout>('per-month');
+  const [lastMode, setLastMode] = useState<Mode>('all');
+  const [mode, setMode] = useState<Mode>('all');
+
+  const isRange = periodMode === 'range';
+  const err = isRange ? rangeError(start, end) : '';
+  const period: Period = isRange && !err ? { start, end } : monthPeriod(s.curYM);
+  // With an invalid range, don't describe the month on screen as if it were what gets exported.
+  const label = isRange && err ? 'the chosen range' : periodLabel(period);
+  const multiMonth = isRange && !err && periodMonths(period).length > 1;
+  const pieces = multiMonth ? splitByMonth(period) : [];
+
+  const inScope = isRange && err ? {} : mergeMonths(s.months, period).days;
+  const filled = Object.keys(inScope).filter((k) => inScope[k].records.length > 0).sort();
+  const sel = isRange ? null : s.scopeKeys;
+  const span = isRange ? 'period' : 'month';
 
   const opts: { id: Mode; title: string; desc: string; keys: string[] | null; suffix: string; disabled?: boolean }[] = [
-    { id: 'month', title: 'Whole month', desc: `Every weekday of ${label}, plus holidays and days with entries.`, keys: null, suffix: '' },
+    { id: 'all', title: `Whole ${span}`, desc: `Every weekday of ${label}, plus holidays and days with entries.`, keys: null, suffix: '' },
     {
       id: 'entries',
       title: 'Only days with entries',
@@ -35,43 +63,98 @@ export function ExportDialog({ open, onClose, onExport, onPreview }: ExportDialo
     },
   ];
   if (sel) opts.push({ id: 'selected', title: 'Selected days only', desc: `${plural(sel.length, 'day')} selected on the calendar. 100% = these days.`, keys: sel, suffix: '_selected' });
+  const chosen = opts.find((o) => o.id === mode && !o.disabled) ?? opts[0];
 
   useEffect(() => {
     if (!open) return;
-    const want: Mode = sel ? 'selected' : lastMode;
-    setMode(opts.some((o) => o.id === want && !o.disabled) ? want : 'month');
+    // Keep the last range only while it still touches the month on screen; otherwise start from that month.
+    const stale = !DATE_RE.test(start) || !DATE_RE.test(end) || start > end || !periodMonths({ start, end }).includes(s.curYM);
+    if (stale) {
+      const mp = monthPeriod(s.curYM);
+      setStart(mp.start);
+      setEnd(mp.end);
+      setPeriodMode('month');
+    }
+    if (s.scopeKeys) setPeriodMode('month');
+    setMode(s.scopeKeys ? 'selected' : lastMode);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const pick = () => {
-    const o = opts.find((x) => x.id === mode) ?? opts[0];
-    if (o.id !== 'selected') setLastMode(o.id);
+  const request = (): ExportRequest | null => {
+    if (err) return null;
+    if (chosen.id !== 'selected') setLastMode(chosen.id);
     onClose();
-    return o;
+    return { fmt, period, only: chosen.keys, layout: multiMonth ? layout : 'combined', suffix: chosen.suffix };
   };
   const go = () => {
-    const o = pick();
-    onExport(fmt, o.keys, o.suffix);
+    const r = request();
+    if (r) onExport(r);
   };
   const preview = () => {
-    const o = pick();
-    onPreview(o.keys, o.suffix);
+    const r = request();
+    if (r) onPreview(r);
   };
+
+  const sheetWord = fmt === 'pdf' ? 'section' : 'sheet';
 
   return (
     <Modal open={open} onClose={onClose} labelledBy="exTitle" narrow>
-      <header><h2 id="exTitle">Download {label}</h2></header>
+      <header><h2 id="exTitle">{isRange && err ? 'Download a date range' : `Download ${label}`}</h2></header>
       <div className="body">
         <fieldset className="seg" id="exFmt">
           <legend className="exlegend">Format</legend>
           <label><input type="radio" name="exfmt" value="xlsx" checked={fmt === 'xlsx'} onChange={() => setFmt('xlsx')} /><span>Excel (.xlsx)</span></label>
           <label><input type="radio" name="exfmt" value="pdf" checked={fmt === 'pdf'} onChange={() => setFmt('pdf')} /><span>PDF</span></label>
         </fieldset>
+
+        <div className="exgroup">
+          <fieldset className="seg" id="exPeriod">
+            <legend className="exlegend">Period</legend>
+            <label><input type="radio" name="experiod" value="month" checked={!isRange} onChange={() => setPeriodMode('month')} /><span>This month</span></label>
+            <label><input type="radio" name="experiod" value="range" checked={isRange} onChange={() => setPeriodMode('range')} /><span>Date range</span></label>
+          </fieldset>
+          {isRange && (
+            <div className="exrange">
+              <label className="fld">
+                <span>From</span>
+                <input type="date" value={start} max={end || undefined} aria-invalid={!!err} aria-describedby="exRangeHelp" onChange={(e) => setStart(e.target.value)} />
+              </label>
+              <label className="fld">
+                <span>To</span>
+                <input type="date" value={end} min={start || undefined} aria-invalid={!!err} aria-describedby="exRangeHelp" onChange={(e) => setEnd(e.target.value)} />
+              </label>
+              <p id="exRangeHelp" className={`exhelp${err ? ' bad' : ''}`} role={err ? 'alert' : undefined}>
+                {err || `${plural(periodLength(period), 'day')}. For a cut-off period, e.g. 21 Oct to 20 Nov.`}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {multiMonth && (
+          <fieldset className="exopts" id="exLayout">
+            <legend className="exlegend">Layout</legend>
+            <label className="exopt">
+              <input type="radio" name="exlayout" value="per-month" checked={layout === 'per-month'} onChange={() => setLayout('per-month')} />
+              <span>
+                <b>One {sheetWord} per month</b>
+                <small>{pieces.map(periodLabel).join(', ')} — each with its own TOTAL and SUMMARY{fmt === 'pdf' ? ', starting on a new page' : ''}.</small>
+              </span>
+            </label>
+            <label className="exopt">
+              <input type="radio" name="exlayout" value="combined" checked={layout === 'combined'} onChange={() => setLayout('combined')} />
+              <span>
+                <b>One combined {sheetWord}</b>
+                <small>All days in one {sheetWord}. TOTAL and SUMMARY cover the whole period.</small>
+              </span>
+            </label>
+          </fieldset>
+        )}
+
         <fieldset className="exopts" id="exOpts">
           <legend className="exlegend">Days to include</legend>
           {opts.map((o) => (
             <label key={o.id} className={`exopt${o.disabled ? ' disabled' : ''}`}>
-              <input type="radio" name="exmode" value={o.id} disabled={o.disabled} checked={mode === o.id} onChange={() => setMode(o.id)} />
+              <input type="radio" name="exmode" value={o.id} disabled={o.disabled} checked={chosen.id === o.id} onChange={() => setMode(o.id)} />
               <span><b>{o.title}</b><small>{o.desc}</small></span>
             </label>
           ))}
@@ -80,12 +163,12 @@ export function ExportDialog({ open, onClose, onExport, onPreview }: ExportDialo
       <footer>
         <button className="btn" type="button" id="exNo" onClick={onClose}>Cancel</button>
         {fmt === 'pdf' && (
-          <button className="btn" type="button" id="exPreview" onClick={preview}>
+          <button className="btn" type="button" id="exPreview" onClick={preview} disabled={!!err}>
             <Icon name="eye" />
             Preview
           </button>
         )}
-        <button className="btn primary" type="button" id="exGo" onClick={go}>Download</button>
+        <button className="btn primary" type="button" id="exGo" onClick={go} disabled={!!err}>Download</button>
       </footer>
     </Modal>
   );
