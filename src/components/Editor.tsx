@@ -20,7 +20,7 @@ export function Editor() {
         : fmtLong(s.selDate);
 
   const visibleKeys = view === 'month' ? listedDates(s.settings, s.curYM, s.month, s.scopeKeys) : isMulti ? selected : [s.selDate];
-  const visibleIds = visibleKeys.flatMap((k) => s.month.days[k]?.records.map((r) => r.id) ?? []);
+  const visibleIds = visibleKeys.flatMap((k) => s.dayOf(k)?.records.map((r) => r.id) ?? []);
 
   return (
     <section className="panel" id="editor" tabIndex={-1} aria-label="Entries">

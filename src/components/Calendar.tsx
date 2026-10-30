@@ -12,7 +12,10 @@ export function Calendar() {
   const keys = monthKeys(curYM);
   const offset = (dowOf(keys[0]) + 6) % 7;
   const today = todayKey();
-  const focusKey = isMulti && selected.length ? selected[0] : selDate;
+  // Keep the roving tab stop on a day in this month (the selection can include other months).
+  const focusKey = (isMulti && selected.find((k) => k.startsWith(curYM))) || (selDate.startsWith(curYM) ? selDate : keys[0]);
+  // Replace this month's part of the selection, keeping days picked in other months.
+  const selectHere = (days: string[]) => s.setSelected([...selected.filter((k) => !k.startsWith(curYM)), ...days]);
 
   const onClick = (e: MouseEvent, key: string) => {
     s.dayClick(key, { shift: e.shiftKey, toggle: e.ctrlKey || e.metaKey });
@@ -63,8 +66,8 @@ export function Calendar() {
         </button>
         {isMulti ? (
           <>
-            <button type="button" className="btn small" title="Weekdays that aren’t holidays" onClick={() => s.setSelected(s.workingDays())}>Working days</button>
-            <button type="button" className="btn small" onClick={() => s.setSelected(s.workingDays(true))}>Empty working days</button>
+            <button type="button" className="btn small" title="Weekdays that aren’t holidays" onClick={() => selectHere(s.workingDays())}>Working days</button>
+            <button type="button" className="btn small" onClick={() => selectHere(s.workingDays(true))}>Empty working days</button>
             {selected.length > 0 && <button type="button" className="btn small quiet" onClick={() => s.setSelected([])}>Clear</button>}
           </>
         ) : (

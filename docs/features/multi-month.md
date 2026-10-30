@@ -38,6 +38,17 @@ instead of producing an empty sheet.
 
 Worksheet names stay within Excel's 31-character limit.
 
+## Selecting days across months
+
+In *Select multiple days* mode, the selection is kept when you change month, so you can pick
+days in October, move to November and keep adding. *Working days* and *Empty working days*
+replace only the visible month's part of the selection. Everything that works on the
+selection covers every selected day, whichever month it's in: Summary, Table, adding the
+same entry, paste, notes, clear and delete (with Undo).
+
+*Selected days only* in Download exports from the first selected month to the last, and offers
+the per-month or combined layout when that spans more than one month.
+
 ## Import
 
 Import reads **every visible worksheet** that has a "Job Description" header row, and keeps
