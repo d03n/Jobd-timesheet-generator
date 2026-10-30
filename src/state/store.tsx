@@ -35,6 +35,12 @@ export interface Store {
   goMonth: (ym: string) => void;
   mutateMonth: (fn: (m: MonthData) => void, ym?: string) => void;
   replaceMonth: (ym: string, m: MonthData) => void;
+  /** A stored day in any month. */
+  dayOf: (key: string) => DayData | undefined;
+  /** The stored days for these dates (any months), as one MonthData. */
+  daysOf: (keys: string[]) => MonthData;
+  /** Edits days in any months; `dayAt` returns a mutable day, creating it if needed. */
+  mutateDays: (fn: (dayAt: (key: string) => DayData) => void) => void;
   /** Overwrites exactly these dates (any month); other days are left alone. */
   replaceDays: (days: Record<string, DayData>) => void;
   renameEverywhere: (field: 'cust' | 'cat', from: string, to: string) => void;
@@ -136,6 +142,35 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const replaceMonth = useCallback((ym: string, m: MonthData) => setMonths((prev) => ({ ...prev, [ym]: m })), []);
 
+  const dayOf = useCallback((key: string) => months[key.slice(0, 7)]?.days[key], [months]);
+  const daysOf = useCallback(
+    (keys: string[]): MonthData => {
+      const days: MonthData['days'] = {};
+      for (const k of keys) {
+        const d = months[k.slice(0, 7)]?.days[k];
+        if (d) days[k] = d;
+      }
+      return { days };
+    },
+    [months],
+  );
+
+  const mutateDays = useCallback((fn: (dayAt: (key: string) => DayData) => void) => {
+    setMonths((prev) => {
+      const next = { ...prev };
+      const touched = new Set<string>();
+      fn((k) => {
+        const ym = k.slice(0, 7);
+        if (!touched.has(ym)) {
+          next[ym] = clone(prev[ym] ?? EMPTY_MONTH);
+          touched.add(ym);
+        }
+        return getDay(next[ym], k);
+      });
+      return next;
+    });
+  }, []);
+
   const replaceDays = useCallback((days: Record<string, DayData>) => {
     setMonths((prev) => {
       const next = { ...prev };
@@ -159,7 +194,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const goMonth = useCallback((ym: string) => {
     if (!/^\d{4}-\d{2}$/.test(ym)) return;
     setCurYM(ym);
-    setSelectedRaw([]);
     setAnchor(null);
     setChecked(new Set());
     const tk = todayKey();
@@ -197,6 +231,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const openDay = useCallback((key: string) => {
+    setCurYM(key.slice(0, 7));
     setSelectedRaw([]);
     setMultiModeRaw(false);
     setSelDate(key);
@@ -210,12 +245,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setSelectedRaw([selDate]);
       } else {
         setMultiModeRaw(false);
-        if (selected.length) setSelDate(selected[0]);
+        const here = selected.find((k) => k.startsWith(curYM));
+        if (here) setSelDate(here);
         setSelectedRaw([]);
       }
       setView('day');
     },
-    [selDate, selected],
+    [curYM, selDate, selected],
   );
 
   const workingDays = useCallback(
@@ -259,6 +295,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     goMonth,
     mutateMonth,
     replaceMonth,
+    dayOf,
+    daysOf,
+    mutateDays,
     replaceDays,
     renameEverywhere,
     selDate,

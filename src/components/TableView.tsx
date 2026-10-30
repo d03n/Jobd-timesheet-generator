@@ -1,5 +1,5 @@
 import type { EntryRecord } from '../types';
-import { getDay, useStore } from '../state/store';
+import { useStore } from '../state/store';
 import { focusRequest, useActions } from '../state/actions';
 import { fmtDays, fmtDMY, monthLabel, WD_LONG, dowOf } from '../lib/dates';
 import { holidayName } from '../lib/holidays';
@@ -16,9 +16,11 @@ export function TableView() {
   const { addEntry, updateRecord, removeRecord, copyEntries, pasteInto, clearMonth } = useActions();
   const util = useUtil();
   const only = s.scopeKeys;
-  const dates = listedDates(s.settings, s.curYM, s.month, only);
+  // Selected days can come from several months.
+  const src = only ? s.daysOf(only) : s.month;
+  const dates = listedDates(s.settings, s.curYM, src, only);
   const leaveCats = s.settings.leaves.map((l) => l.category);
-  const allIds = dates.flatMap((k) => s.month.days[k]?.records.map((r) => r.id) ?? []);
+  const allIds = dates.flatMap((k) => src.days[k]?.records.map((r) => r.id) ?? []);
   const allChecked = allIds.length > 0 && allIds.every((id) => s.checked.has(id));
 
   const dateCell = (k: string, rowSpan: number) => (
@@ -77,7 +79,7 @@ export function TableView() {
           </thead>
           <tbody>
             {dates.map((k) => {
-              const day = s.month.days[k];
+              const day = src.days[k];
               if (!day?.records.length) {
                 const hname = holidayName(s.settings, k);
                 return (
@@ -89,7 +91,7 @@ export function TableView() {
                         aria-label={`Note for ${fmtDMY(k)}`}
                         value={day?.holiday ?? ''}
                         placeholder={hname || 'No entries — note, e.g. Public holiday'}
-                        onChange={(e) => s.mutateMonth((m) => (getDay(m, k).holiday = e.target.value))}
+                        onChange={(e) => s.mutateDays((dayAt) => (dayAt(k).holiday = e.target.value))}
                       />
                     </td>
                   </tr>

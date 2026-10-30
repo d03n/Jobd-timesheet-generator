@@ -18,9 +18,11 @@ export function ClipBar() {
 
 /** Appears when entries are ticked: copy / delete several at once. */
 export function CheckBar({ visibleIds }: { visibleIds: string[] }) {
-  const { checked, setChecked, month } = useStore();
+  const { checked, setChecked, months } = useStore();
   const { deleteChecked, copyEntries } = useActions();
-  const recs = Object.keys(month.days).sort().flatMap((k) => month.days[k].records.filter((r) => checked.has(r.id)));
+  // Ticked entries can be in any month when the selection spans months.
+  const days = Object.values(months).flatMap((m) => Object.entries(m.days));
+  const recs = days.sort(([a], [b]) => (a < b ? -1 : 1)).flatMap(([, d]) => d.records.filter((r) => checked.has(r.id)));
   if (!recs.length) return null;
   return (
     <div className="checkbar" id="checkbar">

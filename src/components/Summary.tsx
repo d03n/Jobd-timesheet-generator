@@ -3,8 +3,9 @@ import { computeSheet } from '../lib/sheet';
 import { fmtDays, fmtPct, fmtShort, plural, round3 } from '../lib/dates';
 
 export function Summary() {
-  const { settings, curYM, month, viewScope, isMulti } = useStore();
-  const data = computeSheet(settings, curYM, month, viewScope);
+  const { settings, curYM, month, viewScope, isMulti, daysOf } = useStore();
+  // Selected days can come from several months.
+  const data = computeSheet(settings, curYM, viewScope ? daysOf(viewScope) : month, viewScope);
   const shown = data.summary.filter((r) => r.days > 0);
   const leaveCats = settings.leaves.map((l) => l.category);
   const accounted = round3(data.summary.reduce((a, r) => a + r.days, 0));
