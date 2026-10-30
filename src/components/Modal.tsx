@@ -5,13 +5,14 @@ interface ModalProps {
   onClose: () => void;
   labelledBy: string;
   narrow?: boolean;
+  wide?: boolean;
   children: ReactNode;
 }
 
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
 
 /** Dialog with scrim, Escape to close, focus trap, and focus returned to the opener. */
-export function Modal({ open, onClose, labelledBy, narrow, children }: ModalProps) {
+export function Modal({ open, onClose, labelledBy, narrow, wide, children }: ModalProps) {
   const ref = useRef<HTMLDivElement>(null);
   const opener = useRef<Element | null>(null);
   const onCloseRef = useRef(onClose);
@@ -56,7 +57,7 @@ export function Modal({ open, onClose, labelledBy, narrow, children }: ModalProp
   if (!open) return null;
   return (
     <div className="overlay open" role="dialog" aria-modal="true" aria-labelledby={labelledBy} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={`modal${narrow ? ' narrow' : ''}`} ref={ref}>
+      <div className={`modal${narrow ? ' narrow' : ''}${wide ? ' wide' : ''}`} ref={ref}>
         {children}
       </div>
     </div>
