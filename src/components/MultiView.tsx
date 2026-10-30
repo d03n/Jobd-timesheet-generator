@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { EntryRecord } from '../types';
-import { getDay, useStore } from '../state/store';
+import { useStore } from '../state/store';
 import { useActions } from '../state/actions';
 import { fmtLong, fmtShort, plural, round3 } from '../lib/dates';
 import { rid } from '../lib/ids';
@@ -30,9 +30,9 @@ export function MultiView() {
       s.showToast('Fill in the entry first.');
       return;
     }
-    s.mutateMonth((m) =>
+    s.mutateDays((dayAt) =>
       keys.forEach((k) => {
-        const day = getDay(m, k);
+        const day = dayAt(k);
         const left = round3(1 - day.records.reduce((a, r) => a + (Number(r.days) || 0), 0));
         const rec: EntryRecord = { id: rid(), ...form, days: form.days === '' ? (left > 0 ? left : '') : form.days };
         day.records.push(rec);
@@ -64,19 +64,19 @@ export function MultiView() {
             type="button"
             className="btn"
             onClick={() => {
-              s.mutateMonth((m) => keys.forEach((k) => (getDay(m, k).holiday = note)));
+              s.mutateDays((dayAt) => keys.forEach((k) => (dayAt(k).holiday = note)));
               s.showToast(note ? `Note set on ${plural(n, 'day')}.` : `Note cleared on ${plural(n, 'day')}.`);
             }}
           >
             Set note
           </button>
-          <button type="button" className="btn" onClick={() => s.setChecked(new Set(keys.flatMap((k) => s.month.days[k]?.records.map((r) => r.id) ?? [])))}>Select all entries</button>
+          <button type="button" className="btn" onClick={() => s.setChecked(new Set(keys.flatMap((k) => s.dayOf(k)?.records.map((r) => r.id) ?? [])))}>Select all entries</button>
           <button type="button" className="btn danger" onClick={() => clearDays(keys)}>Clear entries</button>
         </div>
       </div>
 
       {keys.map((k) => {
-        const day = s.month.days[k] ?? { holiday: '', records: [] };
+        const day = s.dayOf(k) ?? { holiday: '', records: [] };
         return (
           <div className="mday" key={k}>
             <div className="mdayhead">

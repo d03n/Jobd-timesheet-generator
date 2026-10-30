@@ -43,8 +43,6 @@ export function ExportDialog({ open, onClose, onExport, onPreview }: ExportDialo
   const period: Period = isRange && !err ? { start, end } : monthPeriod(s.curYM);
   // With an invalid range, don't describe the month on screen as if it were what gets exported.
   const label = isRange && err ? 'the chosen range' : periodLabel(period);
-  const multiMonth = isRange && !err && periodMonths(period).length > 1;
-  const pieces = multiMonth ? splitByMonth(period) : [];
 
   const inScope = isRange && err ? {} : mergeMonths(s.months, period).days;
   const filled = Object.keys(inScope).filter((k) => inScope[k].records.length > 0).sort();
@@ -65,6 +63,12 @@ export function ExportDialog({ open, onClose, onExport, onPreview }: ExportDialo
   if (sel) opts.push({ id: 'selected', title: 'Selected days only', desc: `${plural(sel.length, 'day')} selected on the calendar. 100% = these days.`, keys: sel, suffix: '_selected' });
   const chosen = opts.find((o) => o.id === mode && !o.disabled) ?? opts[0];
 
+  // Selected days can span months: then export from the first selected month to the last.
+  const outPeriod: Period =
+    chosen.id === 'selected' && sel ? { start: monthPeriod(sel[0].slice(0, 7)).start, end: monthPeriod(sel[sel.length - 1].slice(0, 7)).end } : period;
+  const multiMonth = !err && periodMonths(outPeriod).length > 1;
+  const pieces = multiMonth ? splitByMonth(outPeriod) : [];
+
   useEffect(() => {
     if (!open) return;
     // Keep the last range only while it still touches the month on screen; otherwise start from that month.
@@ -84,7 +88,7 @@ export function ExportDialog({ open, onClose, onExport, onPreview }: ExportDialo
     if (err) return null;
     if (chosen.id !== 'selected') setLastMode(chosen.id);
     onClose();
-    return { fmt, period, only: chosen.keys, layout: multiMonth ? layout : 'combined', suffix: chosen.suffix };
+    return { fmt, period: outPeriod, only: chosen.keys, layout: multiMonth ? layout : 'combined', suffix: chosen.suffix };
   };
   const go = () => {
     const r = request();
@@ -99,7 +103,7 @@ export function ExportDialog({ open, onClose, onExport, onPreview }: ExportDialo
 
   return (
     <Modal open={open} onClose={onClose} labelledBy="exTitle" narrow>
-      <header><h2 id="exTitle">{isRange && err ? 'Download a date range' : `Download ${label}`}</h2></header>
+      <header><h2 id="exTitle">{isRange && err ? 'Download a date range' : `Download ${periodLabel(outPeriod)}`}</h2></header>
       <div className="body">
         <fieldset className="seg" id="exFmt">
           <legend className="exlegend">Format</legend>

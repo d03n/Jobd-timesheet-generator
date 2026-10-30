@@ -1,4 +1,4 @@
-import { useStore, getDay } from '../state/store';
+import { useStore } from '../state/store';
 import { useActions } from '../state/actions';
 import { holidayInfo } from '../lib/holidays';
 import { DayPill, RecordCard } from './RecordCard';
@@ -7,7 +7,7 @@ export function DayView() {
   const s = useStore();
   const { addEntry, pasteInto, copyEntries, copyPrev } = useActions();
   const key = s.selDate;
-  const day = s.month.days[key] ?? { holiday: '', records: [] };
+  const day = s.dayOf(key) ?? { holiday: '', records: [] };
   const info = holidayInfo(s.settings, key);
 
   return (
@@ -28,7 +28,7 @@ export function DayView() {
               type="text"
               value={day.holiday}
               placeholder={info?.name ?? 'e.g. Public holiday'}
-              onChange={(e) => s.mutateMonth((m) => (getDay(m, key).holiday = e.target.value))}
+              onChange={(e) => s.mutateDays((dayAt) => (dayAt(key).holiday = e.target.value))}
             />
           </label>
         )}
